@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Crypto from 'expo-crypto';
@@ -48,7 +49,7 @@ export default function Ghost() {
   return (
     <View style={styles.root}>
       <LightRays intensity={0.45} color={colors.ghost} style={{ opacity: 0.7 }} />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
           <IconButton label="Hayalet sohbeti kapat" onPress={() => router.back()}>
             <CloseIcon />

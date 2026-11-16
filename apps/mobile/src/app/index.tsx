@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useChat } from '@/store/chat';
 import { colors, fonts } from '@/theme';
 import { Composer } from '@/components/Composer';
-import { Aurora, Orb } from '@/components/fx/effects';
+import { Glow, Orb } from '@/components/fx/effects';
 import { ChevronDown, GhostIcon, MenuIcon } from '@/components/icons';
 import { Intro } from '@/components/Intro';
 import { ModelSheet } from '@/components/ModelSheet';
@@ -48,9 +49,9 @@ export default function Home() {
 
   return (
     <View style={styles.root}>
-      <Aurora intensity={1} />
+      <Glow intensity={1} />
       {revealed && (
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
           <Animated.View entering={enter(0) && FadeIn.duration(700)} style={[styles.header, { paddingTop: insets.top + 6 }]}>
             <IconButton label="Menü" onPress={() => router.push('/menu')}>
               <MenuIcon />
@@ -141,8 +142,8 @@ const styles = StyleSheet.create({
   modelText: { color: colors.text, fontFamily: fonts.sansMedium, fontSize: 14 },
   scroll: { flexGrow: 1, justifyContent: 'center', paddingBottom: 24 },
   hero: { paddingHorizontal: 28 },
-  h1: { color: colors.text, fontFamily: fonts.display, fontSize: 44, lineHeight: 52, marginTop: 26, letterSpacing: -1 },
-  h2: { fontFamily: fonts.displayItalic, fontSize: 44, lineHeight: 52, letterSpacing: -1 },
+  h1: { color: colors.text, fontFamily: fonts.display, fontSize: 46, lineHeight: 50, marginTop: 26, letterSpacing: -0.4 },
+  h2: { fontFamily: fonts.displayItalic, fontSize: 46, lineHeight: 50, letterSpacing: -0.4 },
   h2Muted: { color: colors.muted },
   h2Gold: { color: colors.gold },
   cards: { gap: 8, paddingHorizontal: 14, paddingBottom: 10 },

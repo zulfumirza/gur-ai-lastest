@@ -22,8 +22,8 @@ export const fonts = {
   sansMedium: 'Geist_500Medium',
   sansSemi: 'Geist_600SemiBold',
   mono: 'GeistMono_400Regular',
-  display: 'Fraunces_300Light',
-  displayItalic: 'Fraunces_300Light_Italic',
+  display: 'InstrumentSerif_400Regular',
+  displayItalic: 'InstrumentSerif_400Regular_Italic',
 } as const;
 
 export const radius = { sm: 12, md: 18, lg: 22, xl: 28, pill: 999 } as const;

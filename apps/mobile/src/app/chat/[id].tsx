@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useChat } from '@/store/chat';
@@ -25,7 +26,7 @@ export default function Chat() {
   return (
     <View style={styles.root}>
       <LightRays intensity={0.35} style={{ opacity: 0.8 }} />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
           <IconButton label="Menü" onPress={() => router.push('/menu')}>
             <MenuIcon />

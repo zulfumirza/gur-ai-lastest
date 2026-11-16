@@ -12,7 +12,7 @@ import {
 } from '@shopify/react-native-skia';
 import { useDerivedValue, type SharedValue } from 'react-native-reanimated';
 import { colors, rgb } from '@/theme';
-import { aurora, fibers, lightRays, orb } from './shaders';
+import { fibers, glow, lightRays, orb } from './shaders';
 
 function useSize() {
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -57,8 +57,8 @@ export function LightRays({
   );
 }
 
-/** Ana sayfa arka planı: üstte dalgalanan şampanya rengi kutup ışığı. */
-export function Aurora({ intensity = 1, style }: { intensity?: number; style?: StyleProp<ViewStyle> }) {
+/** Ana sayfa arka planı: sakin, yumuşak üst ışık. */
+export function Glow({ intensity = 1, style }: { intensity?: number; style?: StyleProp<ViewStyle> }) {
   const [size, onLayout] = useSize();
   const clock = useClock();
   const uniforms = useDerivedValue(() => ({
@@ -72,7 +72,7 @@ export function Aurora({ intensity = 1, style }: { intensity?: number; style?: S
       {size.width > 0 && (
         <Canvas style={StyleSheet.absoluteFill}>
           <Fill>
-            <Shader source={aurora} uniforms={uniforms} />
+            <Shader source={glow} uniforms={uniforms} />
           </Fill>
         </Canvas>
       )}
