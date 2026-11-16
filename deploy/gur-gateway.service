@@ -1,0 +1,23 @@
+[Unit]
+Description=Gur gateway
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=gur
+Group=gur
+WorkingDirectory=/opt/gur
+EnvironmentFile=/opt/gur/.env
+ExecStart=/opt/gur/gur-gateway
+Restart=on-failure
+RestartSec=3
+# Sertleştirme
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadOnlyPaths=/opt/gur
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target

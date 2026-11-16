@@ -1,0 +1,57 @@
+# Gur model kataloğu.
+# id        : uygulamanın gördüğü kimlik (değiştirmeyin, sohbet geçmişi buna bağlı)
+# name      : arayüzde görünen ad
+# provider  : "openrouter" veya "gur" (kendi API'niz)
+# upstream  : sağlayıcıdaki gerçek model kimliği
+# reasoning : düşünme seviyesi (low/medium/high) desteklenir mi
+# powered_by: model bilgi sayfasında gösterilecek altyapı notu (şeffaflık)
+#
+# Not: upstream kimliklerini OpenRouter'daki güncel listeyle karşılaştırın:
+# https://openrouter.ai/models
+
+default = "gur-meridian"
+
+[[model]]
+id = "gur-0.1"
+name = "Gur 0.1"
+tagline = "Yerli model · Türkçe odaklı"
+provider = "gur"
+upstream = "gur-0.1"
+reasoning = false
+powered_by = "GurLabs"
+
+[[model]]
+id = "gur-meridian"
+name = "Gur Meridian"
+tagline = "En yetenekli · derin işler için"
+provider = "openrouter"
+upstream = "anthropic/claude-opus-5.5"   # doğrulayın
+reasoning = true
+powered_by = "Anthropic Claude Opus 5.5"
+
+[[model]]
+id = "gur-zenith"
+name = "Gur Zenith"
+tagline = "Güçlü ve dengeli"
+provider = "openrouter"
+upstream = "openai/gpt-5"   # doğrulayın
+reasoning = true
+powered_by = "OpenAI GPT-5"
+
+[[model]]
+id = "gur-horizon"
+name = "Gur Horizon"
+tagline = "Hızlı ve ekonomik"
+provider = "openrouter"
+upstream = "mistralai/mistral-medium-3.1"   # doğrulayın
+reasoning = false
+powered_by = "Mistral Medium"
+
+[[model]]
+id = "gur-comet"
+name = "Gur Comet"
+tagline = "En hızlı"
+provider = "openrouter"
+upstream = "deepseek/deepseek-v3.2"   # "DeepSeek Flash" için doğru kimliği yazın
+reasoning = false
+powered_by = "DeepSeek"

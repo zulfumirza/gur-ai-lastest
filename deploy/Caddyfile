@@ -1,0 +1,12 @@
+# api.alanadiniz.com yerine kendi alan adınızı yazın; Caddy TLS sertifikasını kendisi alır.
+api.alanadiniz.com {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8787 {
+		# SSE akışının bekletilmeden iletilmesi için
+		flush_interval -1
+	}
+	# Erişim logu tutulmaz (gizlilik)
+	log {
+		output discard
+	}
+}
