@@ -106,3 +106,64 @@ half4 main(float2 fc) {
   float3 col = mix(float3(0.66, 0.54, 0.36), float3(0.97, 0.92, 0.82), clamp(band + dotv * 0.5, 0.0, 1.0));
   return half4(half3(col * v), half(v));
 }`);
+
+/**
+ * Ana sayfa arka planı: üst kısımda yavaşça dalgalanan şampanya rengi kutup ışığı
+ * (React Bits Aurora'dan esinlenmiştir). Dikey ışık sütunları perdeye doku verir.
+ */
+export const aurora = make(`
+uniform float2 res;
+uniform float time;
+uniform float intensity;
+uniform float3 tint;
+
+float hash(float2 p) { return fract(sin(dot(p, float2(127.1, 311.7))) * 43758.5453); }
+float noise(float2 p) {
+  float2 i = floor(p); float2 f = fract(p);
+  float2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash(i), hash(i + float2(1.0, 0.0)), u.x),
+             mix(hash(i + float2(0.0, 1.0)), hash(i + float2(1.0, 1.0)), u.x), u.y);
+}
+float fbm(float2 p) {
+  float v = 0.0; float a = 0.5;
+  for (int i = 0; i < 3; i++) { v += a * noise(p); p *= 2.03; a *= 0.5; }
+  return v;
+}
+
+float curtain(float2 uv, float x, float base, float amp, float speed, float seed, out float d) {
+  float h = base
+    + amp * 0.5 * sin(x * 6.5 + time * speed * 9.0 + seed)
+    + amp * 1.3 * (fbm(float2(x * 4.2 + time * speed * 2.0 + seed, time * 0.06 + seed)) - 0.5);
+  d = h - uv.y; // > 0: çizginin üstü (ışık sütunları yukarı uzanır)
+  float edge = exp(-(d * d) / 0.0018);
+  float rays = exp(-max(d, 0.0) * 4.5) * step(0.0, d);
+  float under = exp(-max(-d, 0.0) * 18.0) * step(d, 0.0);
+  float n = noise(float2(x * 38.0 + time * 0.22 + seed, time * 0.08 + seed)) * 0.7
+          + noise(float2(x * 90.0 - time * 0.3, seed)) * 0.3;
+  float stri = 0.15 + 0.85 * n * n;
+  float shimmer = 0.75 + 0.25 * sin(time * 1.3 + x * 9.0 + seed);
+  return edge * 0.78 + rays * stri * 0.75 * shimmer + under * 0.25;
+}
+
+half4 main(float2 fc) {
+  float2 uv = fc / res;
+  float x = uv.x * res.x / res.y;
+  float da; float db;
+  float a = curtain(uv, x, 0.21, 0.09, 0.03, 0.0, da);
+  float b = curtain(uv, x + 2.3, 0.31, 0.11, -0.022, 4.1, db) * 0.6;
+  float fade = smoothstep(0.62, 0.0, uv.y);
+
+  float3 ivory = float3(1.0, 0.95, 0.84);
+  float3 gold = tint;
+  float3 amber = float3(0.80, 0.52, 0.27);
+  float3 rose = float3(0.62, 0.34, 0.36);
+  float3 colA = mix(ivory, gold, clamp(abs(da) * 22.0, 0.0, 1.0));
+  colA = mix(colA, amber, clamp(da * 7.0 - 0.15, 0.0, 1.0));
+  float3 colB = mix(amber, rose, clamp(db * 5.0, 0.0, 1.0));
+
+  float va = a * fade * intensity * 0.62;
+  float vb = b * fade * intensity * 0.5;
+  float3 col = colA * va + colB * vb;
+  float alpha = clamp(va + vb, 0.0, 1.0);
+  return half4(half3(clamp(col, 0.0, 1.0)), half(alpha));
+}`);

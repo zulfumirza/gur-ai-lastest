@@ -29,8 +29,7 @@ pub struct ChatReq {
     pub messages: Vec<Msg>,
     /// "low" | "medium" | "high"
     pub effort: Option<String>,
-    /// Faz 1'de yalnızca "sohbet"
-    #[allow(dead_code)]
+    /// "sohbet" | "code" | "design" | "research" | "work"
     pub mode: Option<String>,
 }
 
@@ -54,6 +53,25 @@ fn system_prompt(m: &ModelEntry) -> String {
             name = m.name,
             pb = m.powered_by
         )
+    }
+}
+
+/// Her mod aynı motoru kullanır; yalnızca sistem promptuna kendi talimatını ekler.
+fn mode_prompt(mode: Option<&str>) -> &'static str {
+    match mode {
+        Some("code") => {
+            " Kod modundasın: kıdemli bir yazılımcı gibi çalış. Önce kısa bir plan ver, sonra eksiksiz ve çalışır kod yaz; kod bloklarında dili belirt. Hataları kök nedeniyle açıkla, gereksiz laf etme."
+        }
+        Some("design") => {
+            " Tasarım modundasın: arayüz, tipografi, renk ve düzen konusunda deneyimli bir tasarımcı gibi düşün. Somut değerler (hex renkler, punto, boşluk) öner ve seçeneklerini kısa gerekçelerle sun."
+        }
+        Some("research") => {
+            " Araştırma modundasın: soruyu alt sorulara böl, adım adım ilerle, varsayımlarını ve emin olmadığın noktaları açıkça belirt. Sonunda kısa bir özet ve önerilen sonraki adımları ver. Kaynak uydurma."
+        }
+        Some("work") => {
+            " İş modundasın: e-posta, plan, toplantı notu ve belge hazırlamada yardımcı ol. Profesyonel, net ve uygulanabilir yaz; uygun yerlerde maddeler ve tablolar kullan."
+        }
+        _ => "",
     }
 }
 
@@ -99,7 +117,8 @@ pub fn validate(req: &ChatReq, max_chars: usize) -> Result<(), &'static str> {
 }
 
 pub fn upstream_body(m: &ModelEntry, req: &ChatReq) -> Value {
-    let mut messages = vec![json!({ "role": "system", "content": system_prompt(m) })];
+    let system = format!("{}{}", system_prompt(m), mode_prompt(req.mode.as_deref()));
+    let mut messages = vec![json!({ "role": "system", "content": system })];
     messages.extend(req.messages.iter().map(|x| json!({ "role": x.role, "content": x.content })));
     let mut body = json!({
         "model": m.upstream,
@@ -261,6 +280,19 @@ mod tests {
         assert_eq!(b["reasoning"]["effort"], "high");
         assert_eq!(b["messages"][0]["role"], "system");
         assert!(b["messages"][0]["content"].as_str().unwrap().contains("Gur Meridian"));
+    }
+
+    #[test]
+    fn mode_adds_its_instruction() {
+        let c = Catalog::parse(include_str!("../models.toml")).unwrap();
+        let m = c.get("gur-meridian").unwrap();
+        let mut r = req(&[("user", "selam")]);
+        r.mode = Some("code".into());
+        let sys = upstream_body(m, &r)["messages"][0]["content"].as_str().unwrap().to_string();
+        assert!(sys.contains("Kod modundasın"));
+        r.mode = Some("sohbet".into());
+        let sys = upstream_body(m, &r)["messages"][0]["content"].as_str().unwrap().to_string();
+        assert!(!sys.contains("modundasın"));
     }
 
     #[test]

@@ -44,6 +44,17 @@ export const LockIcon = ({ size = 12, color = colors.faint }: P) => (
 export const TrashIcon = ({ size = 16, color = colors.danger }: P) => (
   <Svg width={size} height={size} viewBox="0 0 24 24"><Path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" {...stroke(color, 1.7)} /></Svg>
 );
+/** Hayalet sohbet simgesi: kayıt tutulmayan sohbet. */
+export const GhostIcon = ({ size = 19, color = colors.text }: P) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24">
+    <Path d="M5 20.5V11a7 7 0 0114 0v9.5l-2.33-1.6-2.34 1.6L12 18.9l-2.33 1.6-2.34-1.6L5 20.5z" {...stroke(color, 1.6)} />
+    <Circle cx={9.6} cy={11} r={1.15} fill={color} />
+    <Circle cx={14.4} cy={11} r={1.15} fill={color} />
+  </Svg>
+);
+export const BackIcon = ({ size = 19, color = colors.text }: P) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24"><Path d="M15 5l-7 7 7 7" {...stroke(color, 1.7)} /></Svg>
+);
 export const EffortBars = ({ level, color = colors.muted }: { level: 1 | 2 | 3; color?: string }) => (
   <Svg width={13} height={13} viewBox="0 0 14 14">
     <Rect x={1.5} y={8} width={2.5} height={4.5} rx={1} fill={color} />

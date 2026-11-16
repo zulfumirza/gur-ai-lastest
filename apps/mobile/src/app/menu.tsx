@@ -6,15 +6,34 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useChat } from '@/store/chat';
 import { colors, fonts } from '@/theme';
 import { FiberField, Orb } from '@/components/fx/effects';
-import { CloseIcon, LockIcon, SearchIcon } from '@/components/icons';
+import { CloseIcon, GhostIcon, LockIcon, SearchIcon } from '@/components/icons';
 import { IconButton } from '@/components/ui';
+import { MODES } from '@/lib/modes';
+import type { ConversationRow } from '@/lib/db';
 
-const SOON = ['Code', 'Design', 'Research', 'Work'];
+const dayDiff = (ts: number) => {
+  const now = new Date();
+  const d = new Date(ts);
+  return Math.floor((new Date(now.toDateString()).getTime() - new Date(d.toDateString()).getTime()) / 86_400_000);
+};
+
+function groupByDay(list: ConversationRow[]) {
+  const groups: { label: string; items: ConversationRow[] }[] = [
+    { label: 'BUGÜN', items: [] },
+    { label: 'DÜN', items: [] },
+    { label: 'SON 7 GÜN', items: [] },
+    { label: 'DAHA ÖNCE', items: [] },
+  ];
+  for (const c of list) {
+    const d = dayDiff(c.updated_at);
+    groups[d <= 0 ? 0 : d === 1 ? 1 : d < 7 ? 2 : 3].items.push(c);
+  }
+  return groups.filter((g) => g.items.length);
+}
 
 function when(ts: number) {
   const d = new Date(ts);
-  const now = new Date();
-  const days = Math.floor((new Date(now.toDateString()).getTime() - new Date(d.toDateString()).getTime()) / 86_400_000);
+  const days = dayDiff(ts);
   if (days === 0) {
     return Date.now() - ts < 60_000 ? 'Şimdi' : `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   }
@@ -28,6 +47,8 @@ export default function Menu() {
   const insets = useSafeAreaInsets();
   const conversations = useChat((s) => s.conversations);
   const remove = useChat((s) => s.remove);
+  const mode = useChat((s) => s.mode);
+  const setMode = useChat((s) => s.setMode);
   const [q, setQ] = useState('');
 
   const filtered = useMemo(() => {
@@ -75,23 +96,44 @@ export default function Menu() {
             <Text style={styles.bigText}>Yeni sohbet</Text>
             <Text style={[styles.tag, { color: colors.gold }]}>＋</Text>
           </Pressable>
-          {SOON.map((m) => (
-            <View key={m} style={styles.bigRow}>
-              <Text style={[styles.bigText, { color: colors.faint }]}>{m}</Text>
-              <Text style={styles.tag}>YAKINDA</Text>
-            </View>
-          ))}
+          <Pressable style={styles.bigRow} onPress={() => router.replace('/ghost')}>
+            <Text style={[styles.bigText, { color: colors.textSoft }]}>Hayalet</Text>
+            <GhostIcon size={18} color={colors.ghost} />
+          </Pressable>
         </View>
 
         <View style={styles.sep} />
-        <View style={styles.labelRow}>
-          <Text style={styles.label}>SON SOHBETLER</Text>
-          <Text style={styles.label}>{conversations.length || ''}</Text>
+        <Text style={[styles.label, { paddingHorizontal: 28, paddingTop: 20 }]}>MODLAR</Text>
+        <View style={styles.modes}>
+          {MODES.map((m) => {
+            const on = m.id === mode;
+            return (
+              <Pressable
+                key={m.id}
+                style={[styles.mode, on && styles.modeOn]}
+                onPress={() => {
+                  setMode(m.id);
+                  router.dismissTo('/');
+                }}
+                accessibilityState={{ selected: on }}
+              >
+                <Text style={[styles.modeText, on && { color: colors.bg }]}>{m.label}</Text>
+              </Pressable>
+            );
+          })}
         </View>
+
+        <View style={styles.sep} />
         {filtered.length === 0 && (
-          <Text style={styles.empty}>{q ? 'Eşleşen sohbet yok.' : 'Henüz sohbet yok. İlk soruyu sor.'}</Text>
+          <Text style={[styles.empty, { paddingTop: 20 }]}>{q ? 'Eşleşen sohbet yok.' : 'Henüz sohbet yok. İlk soruyu sor.'}</Text>
         )}
-        {filtered.map((c) => (
+        {groupByDay(filtered).map((g) => (
+          <View key={g.label}>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>{g.label}</Text>
+              <Text style={styles.label}>{g.items.length}</Text>
+            </View>
+            {g.items.map((c) => (
           <Pressable
             key={c.id}
             style={({ pressed }) => [styles.item, pressed && { opacity: 0.6 }]}
@@ -102,6 +144,8 @@ export default function Menu() {
             <Text style={styles.itemText} numberOfLines={1}>{c.title}</Text>
             <Text style={styles.itemTime}>{when(c.updated_at)}</Text>
           </Pressable>
+            ))}
+          </View>
         ))}
       </ScrollView>
 
@@ -125,7 +169,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingLeft: 24, paddingRight: 18 },
   wordmark: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  word: { color: colors.text, fontFamily: fonts.serif, fontSize: 34 },
+  word: { color: colors.text, fontFamily: fonts.display, fontSize: 32, letterSpacing: -0.5 },
   search: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -142,7 +186,11 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, color: colors.text, fontFamily: fonts.sans, fontSize: 15 },
   big: { paddingHorizontal: 28, paddingTop: 22 },
   bigRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingVertical: 4 },
-  bigText: { color: colors.text, fontFamily: fonts.serif, fontSize: 38, lineHeight: 46 },
+  bigText: { color: colors.text, fontFamily: fonts.display, fontSize: 36, lineHeight: 46, letterSpacing: -0.6 },
+  modes: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingHorizontal: 28, paddingTop: 12 },
+  mode: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 999, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.hairline },
+  modeOn: { backgroundColor: colors.text, borderColor: colors.text },
+  modeText: { color: colors.muted, fontFamily: fonts.sansMedium, fontSize: 13.5 },
   tag: { color: colors.faint, fontFamily: fonts.sansMedium, fontSize: 11, letterSpacing: 1.5 },
   sep: { height: StyleSheet.hairlineWidth, backgroundColor: colors.hairline, marginHorizontal: 28, marginTop: 20 },
   labelRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 28, paddingTop: 20, paddingBottom: 8 },

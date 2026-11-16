@@ -4,17 +4,27 @@ import * as Haptics from 'expo-haptics';
 import { useChat } from '@/store/chat';
 import { colors, fonts } from '@/theme';
 import { BorderBeam } from './fx/effects';
-import { ArrowUp, ChevronDown, EffortBars, PlusIcon, StopIcon } from './icons';
+import { ArrowUp, ChevronDown, PlusIcon, StopIcon } from './icons';
 import { ModelSheet } from './ModelSheet';
+import { ModeSheet } from './ModeSheet';
+import { modeLabel } from '@/lib/modes';
 
-const EFFORT_LABEL = { low: 'Hızlı', medium: 'Orta', high: 'Derin' } as const;
-const EFFORT_LEVEL = { low: 1, medium: 2, high: 3 } as const;
-
-/** Mesaj kutusu: model seçici, düşünme seviyesi, gönder / durdur. */
-export function Composer({ onSend, busy }: { onSend: (text: string) => void; busy: boolean }) {
+/** Mesaj kutusu: model seçici, mod seçici (Sohbet, Code…), gönder / durdur. */
+export function Composer({
+  onSend,
+  busy,
+  placeholder,
+  accent = colors.gold,
+}: {
+  onSend: (text: string) => void;
+  busy: boolean;
+  placeholder?: string;
+  accent?: string;
+}) {
   const [text, setText] = useState('');
   const [sheet, setSheet] = useState(false);
-  const { models, model, effort, stop } = useChat();
+  const [modeSheet, setModeSheet] = useState(false);
+  const { models, model, mode, stop } = useChat();
   const current = models.find((m) => m.id === model);
   const canSend = text.trim().length > 0 && !busy;
 
@@ -32,7 +42,7 @@ export function Composer({ onSend, busy }: { onSend: (text: string) => void; bus
           <TextInput
             value={text}
             onChangeText={setText}
-            placeholder={busy ? 'Yanıt yazılıyor…' : "Gur'a sor…"}
+            placeholder={busy ? 'Yanıt yazılıyor…' : placeholder ?? "Gur'a sor…"}
             placeholderTextColor={colors.faint}
             multiline
             style={styles.input}
@@ -41,27 +51,25 @@ export function Composer({ onSend, busy }: { onSend: (text: string) => void; bus
           />
           <View style={styles.row}>
             <Pressable style={styles.chip} onPress={() => setSheet(true)} accessibilityLabel="Model seç">
-              <View style={styles.dot} />
+              <View style={[styles.dot, { backgroundColor: accent }]} />
               <Text style={styles.chipText}>{current?.name.replace(/^Gur /, '') ?? 'Model'}</Text>
               <ChevronDown />
             </Pressable>
-            {current?.reasoning && (
-              <Pressable style={styles.chip} onPress={() => setSheet(true)} accessibilityLabel="Düşünme seviyesi">
-                <EffortBars level={EFFORT_LEVEL[effort]} />
-                <Text style={[styles.chipText, { color: colors.muted }]}>{EFFORT_LABEL[effort]}</Text>
-              </Pressable>
-            )}
+            <Pressable style={styles.chip} onPress={() => setModeSheet(true)} accessibilityLabel="Mod seç">
+              <Text style={[styles.chipText, { color: colors.muted }]}>{modeLabel(mode)}</Text>
+              <ChevronDown />
+            </Pressable>
             <View style={{ flex: 1 }} />
             <Pressable style={styles.ghost} accessibilityLabel="Ek ekle (yakında)" disabled>
               <PlusIcon size={17} color={colors.faint} />
             </Pressable>
             {busy ? (
-              <Pressable style={styles.action} onPress={stop} accessibilityLabel="Durdur">
+              <Pressable style={[styles.action, { backgroundColor: accent }]} onPress={stop} accessibilityLabel="Durdur">
                 <StopIcon />
               </Pressable>
             ) : (
               <Pressable
-                style={[styles.action, !canSend && styles.actionOff]}
+                style={[styles.action, { backgroundColor: accent }, !canSend && styles.actionOff]}
                 onPress={submit}
                 disabled={!canSend}
                 accessibilityLabel="Gönder"
@@ -73,6 +81,7 @@ export function Composer({ onSend, busy }: { onSend: (text: string) => void; bus
         </View>
       </BorderBeam>
       <ModelSheet visible={sheet} onClose={() => setSheet(false)} />
+      <ModeSheet visible={modeSheet} onClose={() => setModeSheet(false)} />
     </>
   );
 }

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import * as Crypto from 'expo-crypto';
 import { fetchModels, streamChat, type Effort, type ModelInfo } from '@/lib/api';
 import * as store from '@/lib/db';
+import type { Mode } from '@/lib/modes';
 
 export interface Message {
   id: string;
@@ -19,19 +20,25 @@ interface ChatState {
   models: ModelInfo[];
   model: string;
   effort: Effort;
+  mode: Mode;
+  /** Hayalet sohbetler: yalnızca bellekte, geçmişe ve diske yazılmaz. */
+  ghosts: Record<string, true>;
   conversations: store.ConversationRow[];
   messages: Record<string, Message[]>;
   streaming: { conversationId: string; messageId: string; phase: 'thinking' | 'writing' } | null;
   init(): Promise<void>;
   setModel(id: string): void;
   setEffort(e: Effort): void;
+  setMode(m: Mode): void;
   openConversation(id: string): Promise<void>;
   /** Mesajı gönderir ve sohbet kimliğini hemen döndürür; yanıt arka planda akar. */
-  send(text: string, conversationId?: string): string;
+  send(text: string, conversationId?: string, opts?: { ghost?: boolean }): string;
   stop(): void;
   /** Son yanıtı silip aynı soruyu yeniden gönderir. */
   retry(conversationId: string): void;
   remove(id: string): Promise<void>;
+  /** Hayalet sohbeti bellekten tamamen siler. */
+  discard(id: string): void;
 }
 
 const FALLBACK_MODELS: ModelInfo[] = [
@@ -61,6 +68,8 @@ export const useChat = create<ChatState>((set, get) => ({
   models: FALLBACK_MODELS,
   model: 'gur-meridian',
   effort: 'medium',
+  mode: 'sohbet',
+  ghosts: {},
   conversations: [],
   messages: {},
   streaming: null,
@@ -78,6 +87,7 @@ export const useChat = create<ChatState>((set, get) => ({
 
   setModel: (id) => set({ model: id }),
   setEffort: (effort) => set({ effort }),
+  setMode: (mode) => set({ mode }),
 
   async openConversation(id) {
     if (get().messages[id]) return;
@@ -85,12 +95,13 @@ export const useChat = create<ChatState>((set, get) => ({
     set((s) => ({ messages: { ...s.messages, [id]: rows.map(toMessage) } }));
   },
 
-  send(text, conversationId) {
+  send(text, conversationId, opts) {
     const content = text.trim();
     if (!content || get().streaming) return conversationId ?? '';
     const convId = conversationId ?? Crypto.randomUUID();
+    const ghost = opts?.ghost ?? !!get().ghosts[convId];
     const now = Date.now();
-    const { model, effort } = get();
+    const { model, effort, mode } = get();
     const prior = get().messages[convId] ?? [];
 
     const user: Message = { id: Crypto.randomUUID(), role: 'user', content, reasoning: '', thoughtMs: null, model: null, error: null, createdAt: now };
@@ -104,20 +115,24 @@ export const useChat = create<ChatState>((set, get) => ({
     };
     set((s) => ({
       messages: { ...s.messages, [convId]: [...prior, user, reply] },
-      conversations: [conv, ...s.conversations.filter((c) => c.id !== convId)],
+      ...(ghost
+        ? { ghosts: { ...s.ghosts, [convId]: true as const } }
+        : { conversations: [conv, ...s.conversations.filter((c) => c.id !== convId)] }),
       streaming: { conversationId: convId, messageId: reply.id, phase: 'thinking' },
     }));
     void (async () => {
-    await store.upsertConversation(conv).catch(() => {});
-    await store.saveMessage({ ...user, conversation_id: convId, reasoning: null, thought_ms: null, model: null, error: null, created_at: user.createdAt }).catch(() => {});
+    if (!ghost) {
+      await store.upsertConversation(conv).catch(() => {});
+      await store.saveMessage({ ...user, conversation_id: convId, reasoning: null, thought_ms: null, model: null, error: null, created_at: user.createdAt }).catch(() => {});
+    }
 
     const patch = (fn: (m: Message) => Message) =>
-      set((s) => ({
-        messages: {
-          ...s.messages,
-          [convId]: (s.messages[convId] ?? []).map((m) => (m.id === reply.id ? fn(m) : m)),
-        },
-      }));
+      set((s) => {
+        const list = s.messages[convId];
+        // Sohbet bu arada silindiyse (ör. hayalet sohbet kapatıldı) yeniden oluşturma.
+        if (!list) return {};
+        return { messages: { ...s.messages, [convId]: list.map((m) => (m.id === reply.id ? fn(m) : m)) } };
+      });
 
     controller = new AbortController();
     const started = Date.now();
@@ -131,7 +146,7 @@ export const useChat = create<ChatState>((set, get) => ({
 
     try {
       await streamChat(
-        { model, messages: history, effort },
+        { model, messages: history, effort, mode },
         (e) => {
           if (e.type === 'reasoning') patch((m) => ({ ...m, reasoning: m.reasoning + e.t }));
           else if (e.type === 'delta') {
@@ -151,7 +166,7 @@ export const useChat = create<ChatState>((set, get) => ({
       const thought = firstText !== null ? firstText - started : null;
       patch((m) => ({ ...m, thoughtMs: m.reasoning ? thought : null }));
       const final = get().messages[convId]?.find((m) => m.id === reply.id);
-      if (final) {
+      if (final && !ghost && get().messages[convId]) {
         await store.saveMessage({
           id: final.id, conversation_id: convId, role: 'assistant', content: final.content,
           reasoning: final.reasoning || null, thought_ms: final.thoughtMs, model: final.model,
@@ -176,8 +191,17 @@ export const useChat = create<ChatState>((set, get) => ({
     if (!lastUser) return;
     const drop = list.filter((m) => m.createdAt >= lastUser.createdAt).map((m) => m.id);
     set((s) => ({ messages: { ...s.messages, [conversationId]: list.filter((m) => !drop.includes(m.id)) } }));
-    void store.deleteMessages(drop).catch(() => {});
+    if (!get().ghosts[conversationId]) void store.deleteMessages(drop).catch(() => {});
     get().send(lastUser.content, conversationId);
+  },
+
+  discard(id) {
+    if (get().streaming?.conversationId === id) controller?.abort();
+    set((s) => {
+      const { [id]: _m, ...messages } = s.messages;
+      const { [id]: _g, ...ghosts } = s.ghosts;
+      return { messages, ghosts };
+    });
   },
 
   async remove(id) {

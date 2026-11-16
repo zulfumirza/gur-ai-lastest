@@ -9,6 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { InstrumentSerif_400Regular, InstrumentSerif_400Regular_Italic } from '@expo-google-fonts/instrument-serif';
 import { Geist_400Regular, Geist_500Medium, Geist_600SemiBold } from '@expo-google-fonts/geist';
 import { GeistMono_400Regular } from '@expo-google-fonts/geist-mono';
+import { Fraunces_300Light, Fraunces_300Light_Italic } from '@expo-google-fonts/fraunces';
 import { useChat } from '@/store/chat';
 import { colors } from '@/theme';
 
@@ -22,6 +23,8 @@ export default function RootLayout() {
     Geist_500Medium,
     Geist_600SemiBold,
     GeistMono_400Regular,
+    Fraunces_300Light,
+    Fraunces_300Light_Italic,
   });
   const ready = useChat((s) => s.ready);
   const init = useChat((s) => s.init);
@@ -50,6 +53,7 @@ export default function RootLayout() {
           <Stack.Screen name="index" />
           <Stack.Screen name="chat/[id]" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="menu" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
+          <Stack.Screen name="ghost" options={{ animation: 'fade' }} />
         </Stack>
       </SafeAreaProvider>
     </GestureHandlerRootView>

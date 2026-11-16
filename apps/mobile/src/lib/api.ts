@@ -2,6 +2,7 @@ import Constants from 'expo-constants';
 import { fetch } from 'expo/fetch';
 import { getDeviceId } from './device';
 import { SSEParser, type GurEvent } from './sse';
+import type { Mode } from './modes';
 
 export const API_URL: string =
   process.env.EXPO_PUBLIC_API_URL ??
@@ -41,7 +42,7 @@ async function readError(res: { json(): Promise<unknown> }): Promise<string> {
 
 /** Yanıtı SSE olarak akıtır; her olay için `onEvent` çağrılır. */
 export async function streamChat(
-  args: { model: string; messages: ChatMessage[]; effort: Effort },
+  args: { model: string; messages: ChatMessage[]; effort: Effort; mode: Mode },
   onEvent: (e: GurEvent) => void,
   signal: AbortSignal,
 ): Promise<void> {
@@ -52,7 +53,7 @@ export async function streamChat(
       accept: 'text/event-stream',
       'x-gur-device': await getDeviceId(),
     },
-    body: JSON.stringify({ ...args, mode: 'sohbet' }),
+    body: JSON.stringify(args),
     signal,
   });
   if (!res.ok) throw new Error(await readError(res));

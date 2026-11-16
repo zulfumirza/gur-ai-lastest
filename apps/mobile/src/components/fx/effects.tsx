@@ -12,7 +12,7 @@ import {
 } from '@shopify/react-native-skia';
 import { useDerivedValue, type SharedValue } from 'react-native-reanimated';
 import { colors, rgb } from '@/theme';
-import { fibers, lightRays, orb } from './shaders';
+import { aurora, fibers, lightRays, orb } from './shaders';
 
 function useSize() {
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -26,13 +26,22 @@ function useSize() {
 const GOLD = rgb(colors.gold);
 
 /** Ekran arka planı: üstten altın ışık hüzmeleri. */
-export function LightRays({ intensity = 0.7, style }: { intensity?: number; style?: StyleProp<ViewStyle> }) {
+export function LightRays({
+  intensity = 0.7,
+  color = colors.gold,
+  style,
+}: {
+  intensity?: number;
+  color?: string;
+  style?: StyleProp<ViewStyle>;
+}) {
   const [size, onLayout] = useSize();
   const clock = useClock();
+  const tint = rgb(color);
   const uniforms = useDerivedValue(() => ({
     res: [size.width, size.height],
     time: clock.value / 1000,
-    color: GOLD,
+    color: tint,
     intensity,
   }));
   return (
@@ -41,6 +50,29 @@ export function LightRays({ intensity = 0.7, style }: { intensity?: number; styl
         <Canvas style={StyleSheet.absoluteFill}>
           <Fill>
             <Shader source={lightRays} uniforms={uniforms} />
+          </Fill>
+        </Canvas>
+      )}
+    </View>
+  );
+}
+
+/** Ana sayfa arka planı: üstte dalgalanan şampanya rengi kutup ışığı. */
+export function Aurora({ intensity = 1, style }: { intensity?: number; style?: StyleProp<ViewStyle> }) {
+  const [size, onLayout] = useSize();
+  const clock = useClock();
+  const uniforms = useDerivedValue(() => ({
+    res: [size.width, size.height],
+    time: clock.value / 1000,
+    intensity,
+    tint: GOLD,
+  }));
+  return (
+    <View style={[StyleSheet.absoluteFill, style]} onLayout={onLayout} pointerEvents="none">
+      {size.width > 0 && (
+        <Canvas style={StyleSheet.absoluteFill}>
+          <Fill>
+            <Shader source={aurora} uniforms={uniforms} />
           </Fill>
         </Canvas>
       )}
