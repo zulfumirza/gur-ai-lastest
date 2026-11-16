@@ -10,6 +10,9 @@ concurrency:
   group: apk-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
   apk:
     runs-on: ubuntu-latest
@@ -60,3 +63,16 @@ jobs:
           name: gur-apk
           path: apps/mobile/android/app/build/outputs/apk/release/app-release.apk
           retention-days: 14
+
+      - name: Telefondan indirilebilir sürüm yayınla
+        if: github.ref == 'refs/heads/main'
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp apps/mobile/android/app/build/outputs/apk/release/app-release.apk gur.apk
+          gh release delete apk-latest --yes --cleanup-tag || true
+          gh release create apk-latest gur.apk \
+            --title "Gur APK (son derleme)" \
+            --notes "main dalı ${GITHUB_SHA::7} commit'inden otomatik derlendi. Test amaçlıdır; hata ayıklama anahtarıyla imzalıdır." \
+            --prerelease --target "$GITHUB_SHA"
