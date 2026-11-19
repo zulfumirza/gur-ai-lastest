@@ -1,0 +1,102 @@
+name: iOS IPA (imzasız)
+
+# Ücretsiz Apple ID ile yan yükleme için imzasız .ipa üretir.
+# İmzayı kurulum sırasında Sideloadly / AltStore atar (README > iPhone'a kurulum).
+#
+# macOS dakikaları özel depolarda 10 kat sayılır (GitHub Free: ayda ~200 macOS dakikası).
+# Bu yüzden her gönderimde değil, elle (Actions > iOS IPA > Run workflow) çalışır.
+# Tek otomatik tetik: bu dosyanın kendisi değiştiğinde.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/ios-ipa.yml']
+
+concurrency:
+  group: ipa-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  ipa:
+    runs-on: macos-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: apps/mobile
+    env:
+      # Depo ayarları > Secrets and variables > Actions > Variables: API_URL
+      EXPO_PUBLIC_API_URL: ${{ vars.API_URL || 'http://localhost:8787' }}
+      EXPO_NO_TELEMETRY: 1
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+
+      - name: Bağımlılıklar
+        run: npm ci
+
+      - name: Kontroller
+        run: |
+          npx tsc --noEmit
+          npm test
+
+      - name: iOS projesini üret (CocoaPods dahil)
+        run: npx expo prebuild --platform ios --clean
+
+      - name: Derle (imzasız, Release)
+        working-directory: apps/mobile/ios
+        run: |
+          WS=$(ls -d *.xcworkspace | head -1)
+          SCHEME="${WS%.xcworkspace}"
+          echo "Çalışma alanı: $WS, şema: $SCHEME"
+          set -o pipefail
+          xcodebuild \
+            -workspace "$WS" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build | tail -n 200
+
+      - name: .ipa paketle
+        working-directory: apps/mobile/ios
+        run: |
+          APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' | head -1)
+          test -n "$APP" || { echo "::error::.app bulunamadı"; exit 1; }
+          mkdir -p Payload
+          cp -R "$APP" Payload/
+          zip -qry ../../../gur.ipa Payload
+          ls -lh ../../../gur.ipa
+
+      - name: IPA'yı yükle
+        uses: actions/upload-artifact@v4
+        with:
+          name: gur-ipa
+          path: gur.ipa
+          retention-days: 14
+
+      - name: İndirilebilir sürüm yayınla
+        if: github.ref == 'refs/heads/main'
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete ipa-latest --yes --cleanup-tag || true
+          gh release create ipa-latest gur.ipa \
+            --title "Gur iOS (imzasız, son derleme)" \
+            --notes "main dalı ${GITHUB_SHA::7} commit'inden derlendi. İmzasızdır; Sideloadly veya AltStore ile kendi Apple ID'nle kur. Kurulum 7 günde bir yenilenmeli." \
+            --prerelease --target "$GITHUB_SHA"

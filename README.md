@@ -65,6 +65,21 @@ Uygulama Skia, SQLCipher ve SecureStore kullandığı için **Expo Go'da çalı�
 npx eas-cli@latest build --profile development --platform android
 ```
 
+### iPhone'a kurulum (Mac ve ücretli Apple üyeliği olmadan)
+
+1. GitHub'da **Actions → iOS IPA (imzasız) → Run workflow**. Derleme 25–40 dk sürer;
+   bitince `.ipa` **Releases → ipa-latest** altında olur.
+   Özel depoda macOS dakikaları 10 kat sayılır (GitHub Free: ayda yaklaşık 200 macOS dakikası, ~5 derleme).
+2. Windows'a [Sideloadly](https://sideloadly.io)'yi kur. iTunes ve iCloud'un Microsoft Store sürümü
+   değil, Apple sitesindeki sürümü gerekir.
+3. iPhone'u kabloyla bağla, bilgisayara güven. `gur.ipa`'yı Sideloadly'ye sürükle,
+   Apple ID'ni **yalnızca Sideloadly'ye** gir ve Start'a bas.
+4. iPhone'da: **Ayarlar → Gizlilik ve Güvenlik → Geliştirici Modu**'nu aç (yeniden başlatır), sonra
+   **Ayarlar → Genel → VPN ve Aygıt Yönetimi**'nde Apple ID'ne güven.
+
+Ücretsiz Apple ID'nin sınırları: kurulum **7 günde bir** yenilenmeli (Sideloadly'de otomatik
+yenilemeyi açabilirsin), aynı anda en fazla 3 yan yüklenmiş uygulama olabilir.
+
 Kontroller:
 
 ```bash
