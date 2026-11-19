@@ -8,7 +8,7 @@ import { colors, fonts } from '@/theme';
 import { FiberField, Orb } from '@/components/fx/effects';
 import { CloseIcon, GhostIcon, LockIcon, SearchIcon } from '@/components/icons';
 import { IconButton } from '@/components/ui';
-import { MODES } from '@/lib/modes';
+import { MODES, modeLabel, type Mode } from '@/lib/modes';
 import type { ConversationRow } from '@/lib/db';
 
 const dayDiff = (ts: number) => {
@@ -142,6 +142,9 @@ export default function Menu() {
             delayLongPress={350}
           >
             <Text style={styles.itemText} numberOfLines={1}>{c.title}</Text>
+            {c.mode && c.mode !== 'sohbet' && MODES.some((m) => m.id === c.mode) && (
+              <Text style={styles.modeTag}>{modeLabel(c.mode as Mode).toLocaleUpperCase('tr-TR')}</Text>
+            )}
             <Text style={styles.itemTime}>{when(c.updated_at)}</Text>
           </Pressable>
             ))}
@@ -198,6 +201,7 @@ const styles = StyleSheet.create({
   empty: { color: colors.faint, fontFamily: fonts.sans, fontSize: 14, paddingHorizontal: 28, paddingVertical: 8 },
   item: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 28, paddingVertical: 10 },
   itemText: { flex: 1, color: '#CFCAC0', fontFamily: fonts.sans, fontSize: 15 },
+  modeTag: { color: colors.gold, fontFamily: fonts.sansMedium, fontSize: 10, letterSpacing: 1.4, opacity: 0.8 },
   itemTime: { color: colors.faint, fontFamily: fonts.sans, fontSize: 12.5 },
   profile: {
     position: 'absolute',

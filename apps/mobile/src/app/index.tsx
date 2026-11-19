@@ -8,9 +8,9 @@ import { useChat } from '@/store/chat';
 import { colors, fonts } from '@/theme';
 import { Composer } from '@/components/Composer';
 import { Glow, Orb } from '@/components/fx/effects';
-import { ChevronDown, GhostIcon, MenuIcon } from '@/components/icons';
+import { GhostIcon, MenuIcon } from '@/components/icons';
 import { Intro } from '@/components/Intro';
-import { ModelSheet } from '@/components/ModelSheet';
+import { ServerBanner } from '@/components/ServerBanner';
 import { IconButton } from '@/components/ui';
 
 const SUGGESTIONS = [
@@ -33,11 +33,9 @@ let introPlayed = false;
 
 export default function Home() {
   const insets = useSafeAreaInsets();
-  const { send, streaming, models, model } = useChat();
-  const [sheet, setSheet] = useState(false);
+  const { send, streaming } = useChat();
   const [intro, setIntro] = useState(!introPlayed);
   const [revealed, setRevealed] = useState(introPlayed);
-  const current = models.find((m) => m.id === model);
 
   const start = (text: string) => {
     const id = send(text);
@@ -56,11 +54,7 @@ export default function Home() {
             <IconButton label="Menü" onPress={() => router.push('/menu')}>
               <MenuIcon />
             </IconButton>
-            <Pressable style={styles.model} onPress={() => setSheet(true)} accessibilityLabel="Model seç">
-              <View style={styles.dot} />
-              <Text style={styles.modelText}>{current?.name ?? 'Gur'}</Text>
-              <ChevronDown />
-            </Pressable>
+            <Text style={styles.word} accessibilityRole="header">Gur</Text>
             <IconButton label="Hayalet sohbet" onPress={() => router.push('/ghost')}>
               <GhostIcon />
             </IconButton>
@@ -86,6 +80,7 @@ export default function Home() {
           </ScrollView>
 
           <Animated.View entering={enter(4) && FadeInUp.delay(380).duration(700)}>
+            <ServerBanner />
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -119,7 +114,6 @@ export default function Home() {
           }}
         />
       )}
-      <ModelSheet visible={sheet} onClose={() => setSheet(false)} />
     </View>
   );
 }
@@ -127,19 +121,7 @@ export default function Home() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingBottom: 6 },
-  model: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 999,
-    backgroundColor: colors.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.hairline,
-  },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.gold },
-  modelText: { color: colors.text, fontFamily: fonts.sansMedium, fontSize: 14 },
+  word: { color: colors.text, fontFamily: fonts.serif, fontSize: 28, letterSpacing: -0.3 },
   scroll: { flexGrow: 1, justifyContent: 'center', paddingBottom: 24 },
   hero: { paddingHorizontal: 28 },
   h1: { color: colors.text, fontFamily: fonts.display, fontSize: 46, lineHeight: 50, marginTop: 26, letterSpacing: -0.4 },

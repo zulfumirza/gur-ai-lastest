@@ -6,6 +6,8 @@ export interface ConversationRow {
   title: string;
   model: string;
   updated_at: number;
+  /** Sohbetin son kullanılan modu; eski kayıtlarda null. */
+  mode: string | null;
 }
 
 export interface MessageRow {
@@ -52,6 +54,11 @@ export function db(): Promise<SQLite.SQLiteDatabase> {
         );
         CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages(conversation_id, created_at);
       `);
+      // Geçiş: Faz 1 veritabanlarında "mode" sütunu yok.
+      const cols = await d.getAllAsync<{ name: string }>('PRAGMA table_info(conversations)');
+      if (!cols.some((c) => c.name === 'mode')) {
+        await d.execAsync('ALTER TABLE conversations ADD COLUMN mode TEXT');
+      }
       return d;
     })();
   }
@@ -73,9 +80,10 @@ export async function getMessages(conversationId: string): Promise<MessageRow[]>
 
 export async function upsertConversation(c: ConversationRow): Promise<void> {
   await (await db()).runAsync(
-    `INSERT INTO conversations (id, title, model, updated_at) VALUES (?, ?, ?, ?)
-     ON CONFLICT(id) DO UPDATE SET title = excluded.title, model = excluded.model, updated_at = excluded.updated_at`,
-    c.id, c.title, c.model, c.updated_at,
+    `INSERT INTO conversations (id, title, model, updated_at, mode) VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET title = excluded.title, model = excluded.model,
+       updated_at = excluded.updated_at, mode = excluded.mode`,
+    c.id, c.title, c.model, c.updated_at, c.mode,
   );
 }
 

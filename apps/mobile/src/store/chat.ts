@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import * as Crypto from 'expo-crypto';
 import { fetchModels, streamChat, type Effort, type ModelInfo } from '@/lib/api';
 import * as store from '@/lib/db';
-import type { Mode } from '@/lib/modes';
+import { MODES, type Mode } from '@/lib/modes';
 
 export interface Message {
   id: string;
@@ -17,6 +17,8 @@ export interface Message {
 
 interface ChatState {
   ready: boolean;
+  /** Sunucuya ulaşılabiliyor mu? null: henüz denenmedi. */
+  online: boolean | null;
   models: ModelInfo[];
   model: string;
   effort: Effort;
@@ -27,6 +29,8 @@ interface ChatState {
   messages: Record<string, Message[]>;
   streaming: { conversationId: string; messageId: string; phase: 'thinking' | 'writing' } | null;
   init(): Promise<void>;
+  /** Model listesini yeniden çekerek sunucu bağlantısını dener. */
+  checkServer(): Promise<boolean>;
   setModel(id: string): void;
   setEffort(e: Effort): void;
   setMode(m: Mode): void;
@@ -58,6 +62,17 @@ const toMessage = (r: store.MessageRow): Message => ({
   createdAt: r.created_at,
 });
 
+const isMode = (m: unknown): m is Mode => MODES.some((x) => x.id === m);
+
+/** Ağ katmanından gelen ham hataları kullanıcıya anlaşılır hale getirir. */
+const friendlyError = (err: unknown) => {
+  const msg = err instanceof Error ? err.message : '';
+  if (err instanceof TypeError || /network|fetch|connect|timeout/i.test(msg)) {
+    return 'Sunucuya ulaşılamadı. İnternet bağlantını kontrol edip tekrar dene.';
+  }
+  return msg || 'Bağlantı hatası';
+};
+
 const makeTitle = (text: string) => {
   const t = text.replace(/\s+/g, ' ').trim();
   return t.length > 42 ? `${t.slice(0, 40)}…` : t || 'Yeni sohbet';
@@ -65,6 +80,7 @@ const makeTitle = (text: string) => {
 
 export const useChat = create<ChatState>((set, get) => ({
   ready: false,
+  online: null,
   models: FALLBACK_MODELS,
   model: 'gur-meridian',
   effort: 'medium',
@@ -78,6 +94,7 @@ export const useChat = create<ChatState>((set, get) => ({
     const [models, conversations] = await Promise.allSettled([fetchModels(), store.listConversations()]);
     set({
       ready: true,
+      online: models.status === 'fulfilled',
       ...(models.status === 'fulfilled'
         ? { models: models.value.models, model: models.value.default }
         : {}),
@@ -85,11 +102,26 @@ export const useChat = create<ChatState>((set, get) => ({
     });
   },
 
+  async checkServer() {
+    try {
+      const res = await fetchModels();
+      const keep = res.models.some((m) => m.id === get().model);
+      set({ online: true, models: res.models, ...(keep ? {} : { model: res.default }) });
+      return true;
+    } catch {
+      set({ online: false });
+      return false;
+    }
+  },
+
   setModel: (id) => set({ model: id }),
   setEffort: (effort) => set({ effort }),
   setMode: (mode) => set({ mode }),
 
   async openConversation(id) {
+    // Sohbete dönülünce o sohbette en son kullanılan mod geri gelir.
+    const saved = get().conversations.find((c) => c.id === id)?.mode;
+    if (isMode(saved) && !get().streaming) set({ mode: saved });
     if (get().messages[id]) return;
     const rows = await store.getMessages(id);
     set((s) => ({ messages: { ...s.messages, [id]: rows.map(toMessage) } }));
@@ -112,6 +144,7 @@ export const useChat = create<ChatState>((set, get) => ({
       title: prior.length ? get().conversations.find((c) => c.id === convId)?.title ?? makeTitle(content) : makeTitle(content),
       model,
       updated_at: now,
+      mode,
     };
     set((s) => ({
       messages: { ...s.messages, [convId]: [...prior, user, reply] },
@@ -152,7 +185,7 @@ export const useChat = create<ChatState>((set, get) => ({
           else if (e.type === 'delta') {
             if (firstText === null) {
               firstText = Date.now();
-              set((s) => (s.streaming ? { streaming: { ...s.streaming, phase: 'writing' } } : {}));
+              set((s) => (s.streaming ? { online: true, streaming: { ...s.streaming, phase: 'writing' } } : { online: true }));
             }
             patch((m) => ({ ...m, content: m.content + e.t }));
           } else if (e.type === 'error') patch((m) => ({ ...m, error: e.message }));
@@ -161,7 +194,8 @@ export const useChat = create<ChatState>((set, get) => ({
       );
     } catch (err) {
       const aborted = controller?.signal.aborted;
-      patch((m) => ({ ...m, error: aborted ? null : err instanceof Error ? err.message : 'Bağlantı hatası' }));
+      if (!aborted && err instanceof TypeError) set({ online: false });
+      patch((m) => ({ ...m, error: aborted ? null : friendlyError(err) }));
     } finally {
       const thought = firstText !== null ? firstText - started : null;
       patch((m) => ({ ...m, thoughtMs: m.reasoning ? thought : null }));
